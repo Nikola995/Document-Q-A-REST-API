@@ -1,12 +1,15 @@
-def extract(file_path: str, mime_type: str) -> list[tuple[int, str]]:
+import pymupdf4llm
+
+
+def extract(file_path: str, mime_type: str) -> str:
     """
     Text extraction service.
 
     Supports:
-      - PDFs via PyMuPDF (fitz) — handles text-layer PDFs directly
-      - Image files via EasyOCR (or Tesseract as fallback)
+      - PDFs via pymupdf4llm — handles text-layer PDFs directly
+      - Image files via EasyOCR
 
-    Returns: list[tuple[int, str]]  →  [(page_number, page_text), ...]
+    Returns: str - The entire extracted text from the file
     """
     if mime_type == "application/pdf":
         return _extract_pdf(file_path)
@@ -14,11 +17,11 @@ def extract(file_path: str, mime_type: str) -> list[tuple[int, str]]:
         return _extract_image(file_path)
 
 
-def _extract_pdf(file_path: str) -> list[tuple[int, str]]:
-    # TODO: implement with PyMuPDF
-    raise NotImplementedError("PDF extraction not yet implemented")
+def _extract_pdf(file_path: str) -> str:
+    doc = pymupdf4llm.to_markdown(file_path)
+    return doc
 
 
-def _extract_image(file_path: str) -> list[tuple[int, str]]:
+def _extract_image(file_path: str) -> str:
     # TODO: implement with EasyOCR
     raise NotImplementedError("Image OCR not yet implemented")
