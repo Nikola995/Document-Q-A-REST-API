@@ -24,6 +24,6 @@ def _extract_pdf(file_path: str) -> str:
 
 def _extract_image(file_path: str) -> str:
     reader = easyocr.Reader(["en"])
-    results = reader.readtext(file_path, detail=0)
+    results = reader.readtext(file_path, detail=0, paragraph=True)
     # Create a single str from the list of str in results
     return " ".join(results)
