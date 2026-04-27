@@ -8,3 +8,4 @@ pydantic-settings==2.4.0
 # Document extraction
 PyMuPDF==1.27.1
 pymupdf4llm==0.3.4
+easyocr==1.7.2

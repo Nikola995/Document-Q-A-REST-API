@@ -42,11 +42,11 @@ async def upload_document(file: UploadFile = File(...)):
 
     # Extract text (returns list of (page_number, text) tuples)
     try:
-        pages = extraction.extract(save_path, file.content_type)
+        extracted_text = extraction.extract(save_path, file.content_type)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Text extraction failed: {e}")
 
-    if not any(text.strip() for _, text in pages):
+    if not any(extracted_text.strip()):
         raise HTTPException(status_code=422, detail="No readable text found in document.")
 
     return UploadResponse(

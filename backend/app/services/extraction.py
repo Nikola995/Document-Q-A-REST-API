@@ -1,5 +1,5 @@
 import pymupdf4llm
-
+import easyocr
 
 def extract(file_path: str, mime_type: str) -> str:
     """
@@ -23,5 +23,7 @@ def _extract_pdf(file_path: str) -> str:
 
 
 def _extract_image(file_path: str) -> str:
-    # TODO: implement with EasyOCR
-    raise NotImplementedError("Image OCR not yet implemented")
+    reader = easyocr.Reader(["en"])
+    results = reader.readtext(file_path, detail=0)
+    # Create a single str from the list of str in results
+    return " ".join(results)
