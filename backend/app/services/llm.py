@@ -5,8 +5,8 @@ from app.core.config import settings
 
 
 def load_model() -> dict:
-    tokenizer = DistilBertTokenizer.from_pretrained(settings.qa_model_name)
-    model = DistilBertForQuestionAnswering.from_pretrained(settings.qa_model_name)
+    tokenizer = DistilBertTokenizer.from_pretrained(settings.QA_MODEL)
+    model = DistilBertForQuestionAnswering.from_pretrained(settings.QA_MODEL)
     model.eval()
     return {"model": model, "tokenizer": tokenizer}
 
