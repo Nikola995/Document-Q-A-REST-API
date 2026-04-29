@@ -48,10 +48,11 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=422, detail="No readable text found in document."
         )
-    
-    # Chunk text (TODO: add indexing)
-    doc_path = Path(settings.INDEX_DIR) / f"{document_id}.txt"
-    num_chunks = await rag.index_document(extracted_text=extracted_text, doc_path=doc_path)
+
+    # Chunk + Embed + Index text
+    num_chunks = await rag.index_document(
+        extracted_text=extracted_text, document_id=document_id
+    )
 
     return UploadResponse(
         document_id=document_id,
