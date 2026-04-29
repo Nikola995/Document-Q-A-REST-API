@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 100
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    TOP_K_CHUNKS: int = 3
 
     class Config:
         env_file = ".env"

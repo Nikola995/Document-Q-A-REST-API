@@ -2,8 +2,10 @@ from chonkie.pipeline import Pipeline
 from chonkie import Document
 import numpy as np
 import faiss
+from sentence_transformers import SentenceTransformer
 import pickle
 from pathlib import Path
+from app.models.schemas import SourceChunk
 from app.core.config import settings
 
 
@@ -41,7 +43,7 @@ async def index_document(extracted_text: str, document_id: str) -> int:
     )  # inner-product ≈ cosine on normalized vecs
     faiss.normalize_L2(embeddings)
     index.add(embeddings)
-    
+
     doc_path = settings.INDEX_DIR / document_id
     faiss.write_index(index, str(doc_path.with_suffix(".faiss")))
     chunk_texts = [chunk.text for chunk in doc.chunks]
@@ -50,5 +52,27 @@ async def index_document(extracted_text: str, document_id: str) -> int:
     return len(doc.chunks)
 
 
-async def retrieve_chunks(document_id: str, question: str) -> ...:
-    raise NotImplementedError
+async def retrieve_chunks(document_id: str, question: str) -> SourceChunk:
+    doc_path = settings.INDEX_DIR / document_id
+    # If either the .faiss or .meta file is missing, raise FileNotFoundError
+    if not (
+        doc_path.with_suffix(".faiss").exists()
+        and doc_path.with_suffix(".meta").exists()
+    ):
+        raise FileNotFoundError
+    # Load both files
+    index = faiss.read_index(str(doc_path.with_suffix(".faiss")))
+    with open(doc_path.with_suffix(".meta"), "rb") as f:
+        chunk_texts = pickle.load(f)
+    # Retrieve top-k chunks
+    model = SentenceTransformer(settings.EMBEDDING_MODEL)
+    q_emb = model.encode([question], convert_to_numpy=True)
+    faiss.normalize_L2(q_emb)
+    scores, indices = index.search(q_emb, settings.TOP_K_CHUNKS)
+    top_k_chunks = [
+        SourceChunk(text=chunk_texts[i], score=float(scores[0][j]))
+        for j, i in enumerate(indices[0])
+        if i != -1
+    ]
+    print(top_k_chunks)
+    return top_k_chunks[0]

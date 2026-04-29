@@ -19,6 +19,11 @@ class QuestionRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=1000)
 
 
+class SourceChunk(BaseModel):
+    text: str
+    score: float = Field(..., description="Cosine similarity score")
+
+
 class AnswerResponse(BaseModel):
     document_id: str
     question: str
