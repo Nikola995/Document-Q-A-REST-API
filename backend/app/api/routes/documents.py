@@ -1,7 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.models.schemas import UploadResponse, ErrorResponse
 from app.services import extraction
-import uuid, os
+import uuid
+from pathlib import Path
 from datetime import datetime, timezone
 from app.core.config import settings
 
@@ -31,23 +32,26 @@ async def upload_document(file: UploadFile = File(...)):
         )
 
     document_id = str(uuid.uuid4())
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-
     # Persist raw file so extraction service can read it
-    ext = os.path.splitext(file.filename)[-1] or ".bin"
-    save_path = os.path.join(settings.UPLOAD_DIR, f"{document_id}{ext}")
+    ext = Path(file.filename).suffix or ".bin"
+    save_path = settings.UPLOAD_DIR / f"{document_id}{ext}"
     content = await file.read()
-    with open(save_path, "wb") as f:
-        f.write(content)
+    save_path.write_bytes(content)
 
-    # Extract text (returns list of (page_number, text) tuples)
+    # Extract text
     try:
         extracted_text = extraction.extract(save_path, file.content_type)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Text extraction failed: {e}")
 
     if not any(extracted_text.strip()):
-        raise HTTPException(status_code=422, detail="No readable text found in document.")
+        raise HTTPException(
+            status_code=422, detail="No readable text found in document."
+        )
+    
+    # saving extracted text as single index (TODO: replace with indexing when implemented)
+    doc_path = Path(settings.INDEX_DIR) / f"{document_id}.txt"
+    doc_path.write_text(extracted_text, encoding="utf-8")
 
     return UploadResponse(
         document_id=document_id,
