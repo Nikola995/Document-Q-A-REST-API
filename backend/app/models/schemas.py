@@ -1,16 +1,18 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-
 # --- Upload ---
+
 
 class UploadResponse(BaseModel):
     document_id: str = Field(..., description="UUID identifying this document session")
     filename: str
+    num_chunks: int
     created_at: datetime
 
 
 # --- Q&A ---
+
 
 class QuestionRequest(BaseModel):
     document_id: str = Field(..., description="UUID returned from /upload")
@@ -24,6 +26,7 @@ class AnswerResponse(BaseModel):
 
 
 # --- Error ---
+
 
 class ErrorResponse(BaseModel):
     detail: str

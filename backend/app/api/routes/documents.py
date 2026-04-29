@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.models.schemas import UploadResponse, ErrorResponse
-from app.services import extraction
+from app.services import extraction, rag
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
@@ -49,12 +49,13 @@ async def upload_document(file: UploadFile = File(...)):
             status_code=422, detail="No readable text found in document."
         )
     
-    # saving extracted text as single index (TODO: replace with indexing when implemented)
+    # Chunk text (TODO: add indexing)
     doc_path = Path(settings.INDEX_DIR) / f"{document_id}.txt"
-    doc_path.write_text(extracted_text, encoding="utf-8")
+    num_chunks = await rag.index_document(extracted_text=extracted_text, doc_path=doc_path)
 
     return UploadResponse(
         document_id=document_id,
         filename=file.filename,
+        num_chunks=num_chunks,
         created_at=datetime.now(timezone.utc),
     )
