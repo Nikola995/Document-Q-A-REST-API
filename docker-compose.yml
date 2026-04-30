@@ -1,0 +1,39 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: doc-qa-backend
+    ports:
+      - "8000:8000"       # host:container — maps localhost:8000 to container port 8000
+    env_file:
+      - .env              # loads your .env file into the container environment
+    volumes:
+      - uploads:/tmp/uploads
+      - indexes:/tmp/indexes
+      - logs:/app/logs    # added — persists structured logs outside the container
+    depends_on:
+      redis:
+        condition: service_healthy   # waits for Redis healthcheck to pass before starting
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine    # uses official Redis image, no custom Dockerfile needed
+    container_name: doc-qa-redis
+    ports:
+      - "6379:6379"    # exposes Redis to host machine for local dev
+    volumes:
+      - redis_data:/data     # persists Redis data across container restarts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  indexes:
+  redis_data:
+  logs:                      # added — matches the new logs volume above

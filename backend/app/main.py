@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import redis.asyncio as aioredis
 import torch
 
 from app.api.routes import documents, qa
@@ -13,6 +14,14 @@ async def lifespan(app: FastAPI):
     # Ensure directories exist
     settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     settings.INDEX_DIR.mkdir(parents=True, exist_ok=True)
+    # Load the Redis client
+    app.state.redis = aioredis.from_url(settings.REDIS_URL)
+    try:
+        await app.state.redis.ping()
+        # TODO: change to logs when implementing structured logging
+        print("Redis connection established")
+    except Exception as e:
+        print(f"Redis unavailable at startup: {e}")
     # Load the LLM model once at app start
     app.state.qa_model = load_model()
     yield

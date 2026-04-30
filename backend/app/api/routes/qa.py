@@ -16,7 +16,7 @@ async def ask_question(body: QuestionRequest, request: Request):
     # Retrieve top-k chunks from FAISS
     try:
         context = await rag.retrieve_chunks(
-            document_id=body.document_id, question=body.question
+            document_id=body.document_id, question=body.question, request=request
         )
     except FileNotFoundError:
         raise HTTPException(
@@ -40,5 +40,6 @@ async def ask_question(body: QuestionRequest, request: Request):
     return AnswerResponse(
         document_id=body.document_id,
         question=body.question,
+        context=context,
         answer=answer,
     )

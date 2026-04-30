@@ -1,7 +1,8 @@
 import pymupdf4llm
 import easyocr
+from pathlib import Path
 
-def extract(file_path: str, mime_type: str) -> str:
+def extract(file_path: Path, mime_type: str) -> str:
     """
     Text extraction service.
 
@@ -17,13 +18,13 @@ def extract(file_path: str, mime_type: str) -> str:
         return _extract_image(file_path)
 
 
-def _extract_pdf(file_path: str) -> str:
+def _extract_pdf(file_path: Path) -> str:
     doc = pymupdf4llm.to_markdown(file_path)
     return doc
 
 
-def _extract_image(file_path: str) -> str:
+def _extract_image(file_path: Path) -> str:
     reader = easyocr.Reader(["en"])
-    results = reader.readtext(file_path, detail=0, paragraph=True)
+    results = reader.readtext(str(file_path), detail=0, paragraph=True)
     # Create a single str from the list of str in results
     return " ".join(results)

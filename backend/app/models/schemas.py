@@ -7,8 +7,7 @@ from datetime import datetime
 class UploadResponse(BaseModel):
     document_id: str = Field(..., description="UUID identifying this document session")
     filename: str
-    num_chunks: int
-    created_at: datetime
+    already_exists: bool = False
 
 
 # --- Q&A ---
@@ -27,6 +26,7 @@ class SourceChunk(BaseModel):
 class AnswerResponse(BaseModel):
     document_id: str
     question: str
+    context: SourceChunk
     answer: str
 
 
