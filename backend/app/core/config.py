@@ -5,7 +5,7 @@ import torch
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Document Q&A API"
-    VERSION: str = "2.0.0"
+    VERSION: str = "2.1.0"
 
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:8501"]  # Streamlit default port
