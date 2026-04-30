@@ -40,5 +40,6 @@ async def ask_question(body: QuestionRequest, request: Request):
     return AnswerResponse(
         document_id=body.document_id,
         question=body.question,
+        context=context,
         answer=answer,
     )

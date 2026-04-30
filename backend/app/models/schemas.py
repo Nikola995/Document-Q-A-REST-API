@@ -26,6 +26,7 @@ class SourceChunk(BaseModel):
 class AnswerResponse(BaseModel):
     document_id: str
     question: str
+    context: SourceChunk
     answer: str
 
 
