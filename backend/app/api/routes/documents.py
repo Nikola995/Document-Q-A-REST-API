@@ -1,9 +1,10 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from app.models.schemas import UploadResponse, ErrorResponse
 from app.services import extraction, rag
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
+from app.services.cache import get_cached_document_id, set_cached_document_id
 from app.core.config import settings
 
 router = APIRouter()
@@ -24,7 +25,7 @@ ACCEPTED_MIME_TYPES = {
     summary="Upload a document",
     description="Accepts a PDF or image file, extracts text, chunks and indexes it. Returns a document_id for subsequent Q&A requests.",
 )
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(request: Request, file: UploadFile = File(...)):
     if file.content_type not in ACCEPTED_MIME_TYPES:
         raise HTTPException(
             status_code=400,
@@ -49,14 +50,23 @@ async def upload_document(file: UploadFile = File(...)):
             status_code=422, detail="No readable text found in document."
         )
 
+    text = extraction.extract(save_path, file.content_type)
+    # Check cache initially if the exact document (its extracted text) was already processed
+    cached_document_id = await get_cached_document_id(text, request)
+    if cached_document_id is not None:
+        save_path.unlink(
+            missing_ok=True
+        )  # pathlib's delete, missing_ok avoids FileNotFoundError
+        return UploadResponse(
+            document_id=cached_document_id, filename=file.filename, already_exists=True
+        )
     # Chunk + Embed + Index text
-    num_chunks = await rag.index_document(
-        extracted_text=extracted_text, document_id=document_id
-    )
+    await rag.index_document(extracted_text=extracted_text, document_id=document_id)
+    # Add the newly processed document id to cache
+    await set_cached_document_id(extracted_text, document_id, request)
 
     return UploadResponse(
         document_id=document_id,
         filename=file.filename,
-        num_chunks=num_chunks,
         created_at=datetime.now(timezone.utc),
     )

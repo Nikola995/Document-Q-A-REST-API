@@ -1,3 +1,4 @@
+from fastapi import Request
 from chonkie.pipeline import Pipeline
 from chonkie import Document
 import numpy as np
@@ -5,6 +6,7 @@ import faiss
 from sentence_transformers import SentenceTransformer
 import pickle
 from pathlib import Path
+from app.services.cache import get_cached_embedding, set_cached_embedding
 from app.models.schemas import SourceChunk
 from app.core.config import settings
 
@@ -32,7 +34,7 @@ def _chunking_and_embedding(extracted_text: str) -> Document:
     return doc
 
 
-async def index_document(extracted_text: str, document_id: str) -> int:
+async def index_document(extracted_text: str, document_id: str) -> None:
     doc = _chunking_and_embedding(extracted_text=extracted_text)
     embeddings = [chunk.embedding for chunk in doc.chunks]
     # FAISS requires float32 specifically and will throw a cryptic error if it receives float64, which is numpy's default.
@@ -49,10 +51,12 @@ async def index_document(extracted_text: str, document_id: str) -> int:
     chunk_texts = [chunk.text for chunk in doc.chunks]
     with open(doc_path.with_suffix(".meta"), "wb") as f:
         pickle.dump(chunk_texts, f)
-    return len(doc.chunks)
+    return None
 
 
-async def retrieve_chunks(document_id: str, question: str) -> SourceChunk:
+async def retrieve_chunks(
+    document_id: str, question: str, request: Request
+) -> SourceChunk:
     doc_path = settings.INDEX_DIR / document_id
     # If either the .faiss or .meta file is missing, raise FileNotFoundError
     if not (
@@ -64,9 +68,18 @@ async def retrieve_chunks(document_id: str, question: str) -> SourceChunk:
     index = faiss.read_index(str(doc_path.with_suffix(".faiss")))
     with open(doc_path.with_suffix(".meta"), "rb") as f:
         chunk_texts = pickle.load(f)
+
     # Retrieve top-k chunks
     model = SentenceTransformer(settings.EMBEDDING_MODEL)
-    q_emb = model.encode([question], convert_to_numpy=True)
+    # Check if cache exists to optimize set_cached_embedding operation
+    cached = await get_cached_embedding(question=question, request=request)
+    if cached is None:
+        print("Cache MISS!")
+        q_emb = model.encode([question], convert_to_numpy=True)
+        await set_cached_embedding(question=question, embedding=q_emb, request=request)
+    else:
+        print("Cache HIT!")
+        q_emb = cached
     faiss.normalize_L2(q_emb)
     scores, indices = index.search(q_emb, settings.TOP_K_CHUNKS)
     top_k_chunks = [
