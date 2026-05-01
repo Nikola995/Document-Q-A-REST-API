@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Form
 from app.models.internal import FileProcessResult
 from app.models.schemas import FileUploadResult, UploadResponse, ErrorResponse
 from app.services import extraction, rag
@@ -66,7 +66,7 @@ async def process_file(
     description="Accepts a PDF or image file, extracts text, chunks and indexes it. Returns a document_id for subsequent Q&A requests.",
 )
 async def upload_document(
-    request: Request, session_id: Optional[str] = Query(default=None), files: list[UploadFile] = File(...)
+    request: Request, session_id: Optional[str] = Form(default=None), files: list[UploadFile] = File(...)
 ):
     # validate all files before processing any
     for file in files:
