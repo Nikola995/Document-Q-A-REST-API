@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException
 from app.models.schemas import QuestionRequest, AnswerResponse, ErrorResponse
-from app.services import llm, rag
+from app.services import llm, rag, ner
 
 router = APIRouter()
 
@@ -37,9 +37,16 @@ async def ask_question(body: QuestionRequest, request: Request):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
 
+    # Extract answer entities via NER model
+    try:
+        answer_entities = await ner.extract_entities(text=answer, request=request)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NER call failed: {e}")
+
     return AnswerResponse(
         document_id=body.document_id,
         question=body.question,
-        context=context,
+        context_chunk=context,
         answer=answer,
+        answer_entities=answer_entities,
     )

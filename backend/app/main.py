@@ -5,7 +5,9 @@ import redis.asyncio as aioredis
 import torch
 
 from app.api.routes import documents, qa
-from app.services.llm import load_model
+from app.services.rag import load_embedding_model
+from app.services.llm import load_qa_model
+from app.services.ner import load_ner_model
 from app.core.config import settings
 
 
@@ -22,10 +24,14 @@ async def lifespan(app: FastAPI):
         print("Redis connection established")
     except Exception as e:
         print(f"Redis unavailable at startup: {e}")
-    # Load the LLM model once at app start
-    app.state.qa_model = load_model()
+    # Load the models once at app start
+    app.state.embedding_model = load_embedding_model()
+    app.state.qa_model = load_qa_model()
+    app.state.ner_model = load_ner_model()
     yield
+    del app.state.embedding_model
     del app.state.qa_model
+    del app.state.ner_model
     if torch.cuda.is_available():
         torch.cuda.synchronize()  # wait for all CUDA ops to finish
         torch.cuda.empty_cache()

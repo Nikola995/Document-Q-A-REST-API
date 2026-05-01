@@ -16,16 +16,33 @@ class Settings(BaseSettings):
     # Storage — where uploaded files and FAISS indexes are persisted
     INDEX_DIR: Path = Path("/tmp/indexes")
     UPLOAD_DIR: Path = Path("/tmp/uploads")
-    
+
     # Chunking + Embedding
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 100
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     TOP_K_CHUNKS: int = 3
-    
+
     # Caching
     REDIS_URL: str = "redis://localhost:6379"  # safe default for local dev only
-    CACHE_TTL_SECONDS: int = 3600 # 1h expiration time
+    CACHE_TTL_SECONDS: int = 3600  # 1h expiration time
+
+    # LLM
+    NER_MODEL: str = "fastino/gliner2-base-v1"
+    NER_LABELS: list[str] = [
+        "person",
+        "organization",
+        "date",
+        "due date",
+        "location",
+        "invoice number",
+        "line item",
+        "amount",
+        "tax",
+        "payment terms",
+        "obligation",
+        "jurisdiction",
+    ]
 
     class Config:
         env_file = ".env"
