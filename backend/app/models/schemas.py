@@ -4,21 +4,26 @@ from datetime import datetime
 # --- Upload ---
 
 
-class UploadResponse(BaseModel):
-    document_id: str = Field(..., description="UUID identifying this document session")
+class FileUploadResult(BaseModel):
     filename: str
-    already_exists: bool = False
+    already_exists: bool
+
+
+class UploadResponse(BaseModel):
+    session_id: str = Field(..., description="UUID identifying this session")
+    files: list[FileUploadResult]
 
 
 # --- Q&A ---
 
 
 class QuestionRequest(BaseModel):
-    document_id: str = Field(..., description="UUID returned from /upload")
+    session_id: str = Field(..., description="Session UUID returned from /upload")
     question: str = Field(..., min_length=3, max_length=1000)
 
 
 class ContextChunk(BaseModel):
+    filename: str
     text: str
     score: float = Field(..., description="Cosine similarity score")
 
@@ -29,7 +34,7 @@ class Entity(BaseModel):
 
 
 class AnswerResponse(BaseModel):
-    document_id: str
+    session_id: str
     question: str
     context_chunk: ContextChunk
     answer: str
