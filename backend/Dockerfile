@@ -22,10 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Pre-download DistilBERT (used for QA inference)
-RUN python -c "\
-    from transformers import DistilBertTokenizer, DistilBertForQuestionAnswering; \
-    DistilBertTokenizer.from_pretrained('distilbert-base-cased-distilled-squad'); \
-    DistilBertForQuestionAnswering.from_pretrained('distilbert-base-cased-distilled-squad')"
+RUN python -c "from transformers import DistilBertTokenizer; DistilBertTokenizer.from_pretrained('distilbert-base-cased-distilled-squad')"
+RUN python -c "from transformers import DistilBertForQuestionAnswering; DistilBertForQuestionAnswering.from_pretrained('distilbert-base-cased-distilled-squad')"
 
 
 COPY . .
