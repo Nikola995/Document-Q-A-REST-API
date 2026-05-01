@@ -4,11 +4,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        QA_MODEL: ${QA_MODEL}
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+        NER_MODEL: ${NER_MODEL}
     container_name: doc-qa-backend
     ports:
       - "8000:8000"       # host:container — maps localhost:8000 to container port 8000
     env_file:
-      - .env              # loads your .env file into the container environment
+      - ./backend/.env             # loads your .env file into the container environment
     volumes:
       - uploads:/tmp/uploads
       - indexes:/tmp/indexes

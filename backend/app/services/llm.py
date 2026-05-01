@@ -4,7 +4,7 @@ from fastapi import Request
 from app.core.config import settings
 
 
-def load_model() -> dict:
+def load_qa_model() -> dict:
     tokenizer = DistilBertTokenizer.from_pretrained(settings.QA_MODEL)
     model = DistilBertForQuestionAnswering.from_pretrained(settings.QA_MODEL)
     model.eval()

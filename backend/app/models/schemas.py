@@ -18,16 +18,22 @@ class QuestionRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=1000)
 
 
-class SourceChunk(BaseModel):
+class ContextChunk(BaseModel):
     text: str
     score: float = Field(..., description="Cosine similarity score")
+
+
+class Entity(BaseModel):
+    text: str
+    label: str
 
 
 class AnswerResponse(BaseModel):
     document_id: str
     question: str
-    context: SourceChunk
+    context_chunk: ContextChunk
     answer: str
+    answer_entities: list[Entity] = []
 
 
 # --- Error ---

@@ -7,8 +7,12 @@ from sentence_transformers import SentenceTransformer
 import pickle
 from pathlib import Path
 from app.services.cache import get_cached_embedding, set_cached_embedding
-from app.models.schemas import SourceChunk
+from app.models.schemas import ContextChunk
 from app.core.config import settings
+
+
+def load_embedding_model() -> dict:
+    return {"model": SentenceTransformer(settings.EMBEDDING_MODEL)}
 
 
 def _chunking_and_embedding(extracted_text: str) -> Document:
@@ -56,7 +60,7 @@ async def index_document(extracted_text: str, document_id: str) -> None:
 
 async def retrieve_chunks(
     document_id: str, question: str, request: Request
-) -> SourceChunk:
+) -> ContextChunk:
     doc_path = settings.INDEX_DIR / document_id
     # If either the .faiss or .meta file is missing, raise FileNotFoundError
     if not (
@@ -70,12 +74,12 @@ async def retrieve_chunks(
         chunk_texts = pickle.load(f)
 
     # Retrieve top-k chunks
-    model = SentenceTransformer(settings.EMBEDDING_MODEL)
+    emb_model = request.app.state.embedding_model["model"]
     # Check if cache exists to optimize set_cached_embedding operation
     cached = await get_cached_embedding(question=question, request=request)
     if cached is None:
         print("Cache MISS!")
-        q_emb = model.encode([question], convert_to_numpy=True)
+        q_emb = emb_model.encode([question], convert_to_numpy=True)
         await set_cached_embedding(question=question, embedding=q_emb, request=request)
     else:
         print("Cache HIT!")
@@ -83,7 +87,7 @@ async def retrieve_chunks(
     faiss.normalize_L2(q_emb)
     scores, indices = index.search(q_emb, settings.TOP_K_CHUNKS)
     top_k_chunks = [
-        SourceChunk(text=chunk_texts[i], score=float(scores[0][j]))
+        ContextChunk(text=chunk_texts[i], score=float(scores[0][j]))
         for j, i in enumerate(indices[0])
         if i != -1
     ]
