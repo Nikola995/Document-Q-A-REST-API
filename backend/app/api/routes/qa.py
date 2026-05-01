@@ -16,12 +16,12 @@ async def ask_question(body: QuestionRequest, request: Request):
     # Retrieve top-k chunks from FAISS
     try:
         context = await rag.retrieve_chunks(
-            document_id=body.document_id, question=body.question, request=request
+            session_id=body.session_id, question=body.question, request=request
         )
     except FileNotFoundError:
         raise HTTPException(
             status_code=404,
-            detail=f"No index found for document_id '{body.document_id}'. Did you upload it first?",
+            detail=f"No index found for session_id '{body.session_id}'. Did you upload first?",
         )
 
     if not context:
@@ -44,7 +44,7 @@ async def ask_question(body: QuestionRequest, request: Request):
         raise HTTPException(status_code=502, detail=f"NER call failed: {e}")
 
     return AnswerResponse(
-        document_id=body.document_id,
+        session_id=body.session_id,
         question=body.question,
         context_chunk=context,
         answer=answer,

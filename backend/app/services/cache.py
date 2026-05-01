@@ -24,8 +24,8 @@ async def _set_cache(key: str, value: bytes, request: Request) -> None:
 
 
 # --- Key generation ---
-def _document_key(text: str) -> str:
-    return hashlib.sha256(text.encode()).hexdigest()
+def _document_key(session_id: str, text: str) -> str:
+    return hashlib.sha256(f"{session_id}:{text}".encode()).hexdigest()
 
 
 def _embedding_key(question: str) -> str:
@@ -33,13 +33,17 @@ def _embedding_key(question: str) -> str:
 
 
 # --- Document caching ---
-async def get_cached_document_id(text: str, request: Request) -> Optional[str]:
-    raw = await _get_cache(_document_key(text), request)
+async def get_cached_document_id(
+    session_id: str, text: str, request: Request
+) -> str | None:
+    raw = await _get_cache(_document_key(session_id, text), request)
     return raw.decode() if raw else None
 
 
-async def set_cached_document_id(text: str, document_id: str, request: Request) -> None:
-    await _set_cache(_document_key(text), document_id.encode(), request)
+async def set_cached_document_id(
+    session_id: str, text: str, document_id: str, request: Request
+) -> None:
+    await _set_cache(_document_key(session_id, text), document_id.encode(), request)
 
 
 # --- QA Question Embedding caching ---
