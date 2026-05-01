@@ -23,6 +23,7 @@ class QuestionRequest(BaseModel):
 
 
 class ContextChunk(BaseModel):
+    filename: str
     text: str
     score: float = Field(..., description="Cosine similarity score")
 
