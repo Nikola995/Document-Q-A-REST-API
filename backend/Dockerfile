@@ -18,14 +18,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 
-# Pre-download embedding model (used for chunk indexing and retrieval)
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Pre-download models — change only when model names change
+ARG EMBEDDING_MODEL
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL}')"
 
-# Pre-download DistilBERT (used for QA inference)
-RUN python -c "\
-    from transformers import DistilBertTokenizer, DistilBertForQuestionAnswering; \
-    DistilBertTokenizer.from_pretrained('distilbert-base-cased-distilled-squad'); \
-    DistilBertForQuestionAnswering.from_pretrained('distilbert-base-cased-distilled-squad')"
+ARG QA_MODEL
+RUN python -c "from transformers import DistilBertTokenizer; DistilBertTokenizer.from_pretrained('${QA_MODEL}')"
+RUN python -c "from transformers import DistilBertForQuestionAnswering; DistilBertForQuestionAnswering.from_pretrained('${QA_MODEL}')"
+
+ARG NER_MODEL
+RUN python -c "from gliner2 import GLiNER2; GLiNER2.from_pretrained('${NER_MODEL}')"
 
 
 COPY . .
