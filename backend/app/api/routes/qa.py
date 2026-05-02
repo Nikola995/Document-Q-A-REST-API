@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException
+from loguru import logger
+import time
 from app.models.schemas import QuestionRequest, AnswerResponse, ErrorResponse
 from app.services import llm, rag, ner
 
@@ -13,36 +15,84 @@ router = APIRouter()
     description="Given a document_id from /upload, retrieves the most relevant chunks via FAISS and generates an answer using the configured LLM.",
 )
 async def ask_question(body: QuestionRequest, request: Request):
+    qa_time_start = time.perf_counter()
     # Retrieve top-k chunks from FAISS
     try:
         context = await rag.retrieve_chunks(
             session_id=body.session_id, question=body.question, request=request
         )
     except FileNotFoundError:
+        logger.error(
+            "invalid_session_id",
+            extra={
+                "session_id": body.session_id,
+                "endpoint": "/ask",
+            },
+        )
         raise HTTPException(
             status_code=404,
             detail=f"No index found for session_id '{body.session_id}'. Did you upload first?",
         )
 
     if not context:
+        logger.error(
+            "retrieval_failure",
+            extra={
+                "session_id": body.session_id,
+                "question": body.question,
+                "error": "No relevant context found.",
+            },
+        )
         raise HTTPException(
-            status_code=404, detail="No relevant content found for this question."
+            status_code=404, detail="No relevant context found for this question."
         )
 
     # Generate answer via LLM
     try:
         answer = await llm.generate_answer(
-            question=body.question, context=context.text, request=request
+            question=body.question,
+            context=context.text,
+            session_id=body.session_id,
+            request=request,
         )
     except Exception as e:
+        logger.error(
+            "llm_failure",
+            extra={
+                "session_id": body.session_id,
+                "question": body.question,
+                "context_filename": context.filename,
+                "context_text": context.text,
+                "error": f"LLM call failed: {e}",
+            },
+        )
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
 
     # Extract answer entities via NER model
     try:
-        answer_entities = await ner.extract_entities(text=answer, request=request)
+        answer_entities = await ner.extract_entities(
+            text=answer, session_id=body.session_id, request=request
+        )
     except Exception as e:
+        logger.error(
+            "ner_failure",
+            extra={
+                "session_id": body.session_id,
+                "answer": answer,
+                "error": f"NER call failed: {e}",
+            },
+        )
         raise HTTPException(status_code=502, detail=f"NER call failed: {e}")
 
+    qa_time_total = time.perf_counter() - qa_time_start
+    logger.info(
+        "qa_completed",
+        extra={
+            "session_id": body.session_id,
+            "question": body.question,
+            "execution_time_s": qa_time_total,
+        },
+    )
     return AnswerResponse(
         session_id=body.session_id,
         question=body.question,

@@ -9,3 +9,4 @@ venv/
 .python-version
 pyproject.toml
 /tmp/
+/backend/logs/

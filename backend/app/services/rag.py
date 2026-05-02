@@ -5,6 +5,8 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 import pickle
+from loguru import logger
+import time
 from pathlib import Path
 from app.services.cache import get_cached_embedding, set_cached_embedding
 from app.models.internal import ChunkMetadata, DocumentMetadata, FileProcessResult
@@ -13,6 +15,7 @@ from app.core.config import settings
 
 
 def load_embedding_model() -> dict:
+    logger.info("Loading embedding model", model=settings.EMBEDDING_MODEL)
     return {"model": SentenceTransformer(settings.EMBEDDING_MODEL)}
 
 
@@ -91,10 +94,40 @@ async def index_documents(
     # process all non-duplicate files
     for result in file_results:
         if result.already_exists:
+            logger.warning(
+                "duplicate_document",
+                extra={
+                    "filename": result.filename,
+                    "session_id": session_id,
+                },
+            )
             continue
-
+        chunking_time_start = time.perf_counter()
         doc = _chunk(result.text)
+        chunking_time_total = time.perf_counter() - chunking_time_start
+        logger.info(
+            "chunking_success",
+            extra={
+                "session_id": session_id,
+                "document_id": result.document_id,
+                "filename": result.filename,
+                "num_chunks": len(doc.chunks),
+                "execution_time_s": chunking_time_total,
+            },
+        )
+        embedding_time_start = time.perf_counter()
         chunk_embeddings = _embed(doc, model)
+        embedding_time_total = time.perf_counter() - embedding_time_start
+        logger.info(
+            "embedding_success",
+            extra={
+                "session_id": session_id,
+                "document_id": result.document_id,
+                "filename": result.filename,
+                "num_chunks": len(doc.chunks),
+                "execution_time_s": embedding_time_total,
+            },
+        )
         # extend chunk list — order preserved, matches FAISS index position
         chunks_store.extend(
             [
@@ -113,11 +146,23 @@ async def index_documents(
         return  # all files were duplicates, nothing to index
 
     # build and save index once after all files processed
+    indexing_time_start = time.perf_counter()
     combined_embeddings = np.vstack(new_embeddings)
     faiss.normalize_L2(combined_embeddings)
 
     index = _load_or_create_index(base_path, combined_embeddings.shape[1])
     index.add(combined_embeddings)
+
+    indexing_time_total = time.perf_counter() - indexing_time_start
+    logger.info(
+        "indexing_success",
+        extra={
+            "session_id": session_id,
+            "num_files": len(new_embeddings),
+            "num_emb": combined_embeddings.shape[0],
+            "execution_time_s": indexing_time_total,
+        },
+    )
 
     # persist all three stores once
     faiss.write_index(index, str(base_path.with_suffix(".faiss")))
@@ -143,17 +188,16 @@ async def retrieve_chunks(
         docs_store: dict[str, DocumentMetadata] = pickle.load(f)
 
     model = request.app.state.embedding_model["model"]
+    retrieval_time_start = time.perf_counter()
     # check embedding cache
     cached = await get_cached_embedding(question, request)
     if cached is None:
-        print("Cache MISS!")
         q_emb = model.encode([question], convert_to_numpy=True).astype(np.float32)
         faiss.normalize_L2(q_emb)
         await set_cached_embedding(question, q_emb, request)
     else:
-        print("Cache HIT!")
         q_emb = cached
-
+    # index search
     faiss.normalize_L2(q_emb)
     scores, indices = index.search(q_emb, settings.TOP_K_CHUNKS)
 
@@ -161,5 +205,15 @@ async def retrieve_chunks(
     top_score = float(scores[0][0])
     chunk = chunks_store[top_idx]
     doc = docs_store[chunk.document_id]
-
+    retrieval_time_total = time.perf_counter() - retrieval_time_start
+    logger.info(
+        "retrieval_success",
+        extra={
+            "session_id": session_id,
+            "question": question,
+            "context_filename": doc.filename,
+            "context_text": chunk.text,
+            "execution_time_s": retrieval_time_total,
+        },
+    )
     return ContextChunk(text=chunk.text, score=top_score, filename=doc.filename)
