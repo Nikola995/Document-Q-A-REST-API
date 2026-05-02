@@ -266,6 +266,12 @@ Tests use `httpx.AsyncClient` with `ASGITransport` — no running server require
 
 ---
 
+## Demo
+
+See [demo/README.md](demo/README.md) for a visual walkthrough of the application.
+
+---
+
 ## Future Considerations
 
 The following improvements were identified during development but excluded from this iteration as beyond the current scope.
